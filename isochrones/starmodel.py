@@ -24,6 +24,8 @@ from .priors import age_prior, distance_prior, AV_prior, q_prior
 from .priors import salpeter_prior, feh_prior
 from .isochrone import get_ichrone, Isochrone
 
+rand.seed(0)
+np.random.seed(0)
 def _parse_config_value(v):
     try: 
         val = float(v)
@@ -425,8 +427,12 @@ class StarModel(object):
     def lnpost(self, p, **kwargs):
         lnpr = self.lnprior(p)
         if not np.isfinite(lnpr):
-            return lnpr
-        return lnpr + self.lnlike(p, **kwargs)
+            return -1e90
+        _lnpost = lnpr + self.lnlike(p, **kwargs)
+        if not np.isfinite(_lnpost):
+            _lnpost = -1e90
+
+        return _lnpost
 
     def lnlike(self, p, **kwargs):
         lnl = self.obs.lnlike(p, **kwargs)
@@ -766,12 +772,10 @@ class StarModel(object):
                 print("After initial burn, p0={}".format(p0_best))
                 p0 = p0_best * (1 + rand.normal(size=p0.shape)*0.001)
                 print(p0)
-        else:
-            p0 = np.array(p0)
-            p0 = rand.normal(size=(nwalkers,npars))*0.01 + p0.T[None,:]
-        
+
         sampler = emcee.EnsembleSampler(nwalkers,npars,self.lnpost)
-        pos, prob, state = sampler.run_mcmc(p0, nburn)
+        pos, prob, state = sampler.run_mcmc(p0, nburn,rstate0=np.random.get_state())
+
         sampler.reset()
         sampler.run_mcmc(pos, niter, rstate0=state)
         
@@ -805,7 +809,7 @@ class StarModel(object):
                 raise
         else:
             #select out only walkers with > 0.15 acceptance fraction
-            ok = self.sampler.acceptance_fraction > 0.15
+            ok = self.sampler.acceptance_fraction > 0
 
             chain = self.sampler.chain[ok,:,:]
             chain = chain.reshape((chain.shape[0]*chain.shape[1],
