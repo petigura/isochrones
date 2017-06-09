@@ -13,7 +13,7 @@ import logging
 import json
 import emcee
 import corner
-import pymultinest
+#import pymultinest
 
 import configobj
 from astropy.coordinates import SkyCoord
