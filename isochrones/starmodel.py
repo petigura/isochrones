@@ -896,6 +896,17 @@ class StarModel(object):
         if query is not None:
             df = df.query(query)
 
+        nsamp = len(df)
+        df = df.dropna(subset=params)
+        nsamp_notnull = len(df)
+        nsamp_null = nsamp - nsamp_notnull
+        frac_null = 1.0 * nsamp_null / nsamp
+        if nsamp_null > 0:
+            msg = "dropping {}/{} ({:.2f}\%)samp".format(
+                nsamp_null,nsamp,frac_null*100
+            )
+            print(msg)
+        
         priors = []
         for p in params:
             if re.match('mass', p):
@@ -939,6 +950,7 @@ class StarModel(object):
         if 'range' not in kwargs:
             rng = [0.995 for p in props]
 
+            
         return self.corner(props, range=rng, **kwargs)
 
     def mag_plot(self, *args, **kwargs):
